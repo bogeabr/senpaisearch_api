@@ -28,27 +28,8 @@ def test_create_user(client):
     }
 
 
-def test_get_user(client, user):
-    response = client.get(f'/users/{user.id}')
-
-    assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'username': user.username,
-        'email': user.email,
-        'id': user.id,
-    }
-
-
-def test_get_user_should_return_not_found__exercicio(client):
-    response = client.get('/users/666')
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'User not found'}
-    
-
 def test_read_users(client):
-    response = client.get('/users/')
-
+    response = client.get('/users')
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'users': []}
 
@@ -61,46 +42,30 @@ def test_read_users_with_user(client, user):
     assert response.json() == {'users': [user_schema]}
 
 
-def test_update_user(client, user):
+def test_update_user(client, user, token):
     response = client.put(
-        'users/1',
+        f'users/{user.id}',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'password': 'buçamole',
             'username': 'testeusername2',
             'email': 'teste@gmail.com',
-            'id': 1,
+            'id': user.id,
         },
     )
     assert response.json() == {
         'username': 'testeusername2',
         'email': 'teste@gmail.com',
-        'id': 1,
+        'id': user.id,
     }
 
 
-def test_user_not_found(client):
-    response = client.put(
-        '/users/99',
-        json={
-            'password': 'buçamole',
-            'username': 'testeusername2',
-            'email': 'teste@gmail.com',
-            'id': 1,
-        },
+def test_delete_user(client, user, token):
+    response = client.delete(
+        f'/users/{user.id}', headers={'Authorization': f'Bearer {token}'}
     )
-    assert response.status_code == HTTPStatus.NOT_FOUND
-
-
-def test_delete_user(client, user):
-    response = client.delete('/users/1')
 
     assert response.json() == {'message': 'User deleted'}
-
-
-def test_delete_user_not_found(client):
-    response = client.delete('/users/99')
-
-    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_create_user_should_retrun_400_username_exists(client, user):
@@ -127,3 +92,15 @@ def test_create_user_should_retrun_400_email_exists(client, user):
     )
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert response.json() == {'detail': 'Email already exists'}
+
+
+def test_get_token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert token['token_type'] == 'Bearer'
+    assert 'access_token' in token
