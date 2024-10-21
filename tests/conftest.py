@@ -1,3 +1,4 @@
+import factory
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -8,6 +9,15 @@ from senpaisearch.app import app
 from senpaisearch.database import get_session
 from senpaisearch.models import User, table_registry
 from senpaisearch.security import get_password_hash
+
+
+class UserFactory(factory.Factory):
+    class Meta:
+        model = User
+
+    username = factory.Sequence(lambda n: f'test{n}')
+    email = factory.LazyAttribute(lambda obj: f'{obj.username}@test.com')
+    password = factory.LazyAttribute(lambda obj: f'{obj.username}+senha')
 
 
 @pytest.fixture
@@ -41,17 +51,27 @@ def session():
 @pytest.fixture
 def user(session):
     pwd = 'testtest'
-    user = User(
-        username='teste',
-        email='teste@test.com',
-        password=get_password_hash(pwd),
-    )
+    user = UserFactory(password=get_password_hash(pwd))
 
     session.add(user)
     session.commit()
     session.refresh(user)
 
     user.clean_password = pwd
+
+    return user
+
+
+@pytest.fixture
+def user_fun(session):
+    password = 'testtest'
+    user = UserFactory(password=get_password_hash(password))
+
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    user.clean_password = 'testtest'
 
     return user
 
