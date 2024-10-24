@@ -7,7 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from senpaisearch.app import app
 from senpaisearch.database import get_session
-from senpaisearch.models import User, table_registry
+from senpaisearch.models import Character, User, table_registry
 from senpaisearch.security import get_password_hash
 
 
@@ -18,6 +18,19 @@ class UserFactory(factory.Factory):
     username = factory.Sequence(lambda n: f'test{n}')
     email = factory.LazyAttribute(lambda obj: f'{obj.username}@test.com')
     password = factory.LazyAttribute(lambda obj: f'{obj.username}+senha')
+
+
+class CharacterFactory(factory.Factory):
+    class Meta:
+        model = Character
+
+    name = factory.Faker('name')
+    age = factory.Faker('random_int')
+    anime = factory.Faker('word')
+    hierarchy = factory.Faker('word')
+    abilities = factory.Faker('sentence')
+    notable_moments = factory.Faker('paragraph')
+    user_id = 1
 
 
 @pytest.fixture
