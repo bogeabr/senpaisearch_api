@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import INTEGER, ForeignKey, String, func
+from sqlalchemy import INTEGER, Boolean, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, registry
 
 table_registry = registry()
@@ -14,6 +14,7 @@ class User:
     username: Mapped[str] = mapped_column(unique=True)
     password: Mapped[str]
     email: Mapped[str] = mapped_column(unique=True)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )

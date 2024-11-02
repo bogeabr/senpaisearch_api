@@ -13,6 +13,10 @@ class UserSchema(BaseModel):
     password: str
 
 
+class UserCreateAdmin(UserSchema):
+    is_superuser: Optional[bool] = False
+
+
 class UserPublic(BaseModel):
     id: int
     username: str

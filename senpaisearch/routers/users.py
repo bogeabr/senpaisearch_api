@@ -9,23 +9,37 @@ from senpaisearch.database import get_session
 from senpaisearch.models import User
 from senpaisearch.schemas import (
     Message,
+    UserCreateAdmin,
     UserList,
     UserPublic,
     UserSchema,
 )
-from senpaisearch.security import get_current_user, get_password_hash
+from senpaisearch.security import (
+    get_current_active_superuser,
+    get_current_user,
+    get_password_hash,
+)
 
 router = APIRouter(prefix='/users', tags=['users'])
 T_Session = Annotated[Session, Depends(get_session)]
 T_CurrentUser = Annotated[User, Depends(get_current_user)]
+T_CurrentSuperUser = Annotated[User, Depends(get_current_active_superuser)]
 
 
 @router.get('/', response_model=UserList)
 def read_users(
     session: T_Session,
+    current_user: T_CurrentSuperUser,
     limit: int = 100,
     offset: int = 0,
 ):
+    # Verificação explícita de superusuário
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail='Not enough permissions',
+        )
+
     users = session.scalars(select(User).offset(offset).limit(limit)).all()
 
     return {'users': users}
@@ -65,12 +79,37 @@ def create_user(
     return db_user
 
 
+@router.post('/admin/users/')
+def create_user_admin(
+    user_data: UserCreateAdmin,
+    session: T_Session,
+    current_user: T_CurrentSuperUser,
+):
+    if current_user.is_superuser:
+        # Apenas superusuários podem criar usuários com `is_superuser`
+        new_user = User(
+            username=user_data.username,
+            email=user_data.email,
+            password=get_password_hash(user_data.password),
+            is_superuser=user_data.is_superuser,
+        )
+        session.add(new_user)
+        session.commit()
+        session.refresh(new_user)
+        return new_user
+    else:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail='User does not have the required superuser privileges',
+        )
+
+
 @router.put('/{user_id}', response_model=UserPublic)
 def update_user(
     user_id: int,
     user: UserSchema,
     session: T_Session,
-    current_user: T_CurrentUser,
+    current_user: T_CurrentSuperUser,
 ):
     if current_user.id != user_id:
         raise HTTPException(
@@ -92,7 +131,7 @@ def update_user(
 def delete_user(
     user_id: int,
     session: T_Session,
-    current_user: T_CurrentUser,
+    current_user: T_CurrentSuperUser,
 ):
     if current_user.id != user_id:
         raise HTTPException(

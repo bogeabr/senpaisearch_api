@@ -68,3 +68,13 @@ def get_current_user(
         raise credentials_exception
 
     return user_db
+
+
+def get_current_active_superuser(current_user=Depends(get_current_user)):
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN,
+            detail='User does not have the required superuser privileges',
+        )
+
+    return current_user

@@ -14,19 +14,23 @@ from senpaisearch.schemas import (
     CharacterUpdate,
     Message,
 )
-from senpaisearch.security import get_current_user
+from senpaisearch.security import (
+    get_current_active_superuser,
+    get_current_user,
+)
 
 router = APIRouter(prefix='/characters', tags=['characters'])
 
 Session = Annotated[Session, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+T_CurrentSuperUser = Annotated[User, Depends(get_current_active_superuser)]
 
 
 @router.post('/', response_model=CharacterPublic)
 def create_character(
     character: CharacterCreate,
     session: Session,
-    user: CurrentUser,
+    user: T_CurrentSuperUser,
 ):
     # Extraindo os campos enviados
     db_character = Character(
@@ -52,7 +56,14 @@ def list_characters(
     hierarchy: str | None = None,
     limit: int | None = None,
 ):
-    query = select(Character).where(Character.user_id == user.id)
+    # Verifica se o usuário autenticado é válido
+    if not user:
+        raise HTTPException(
+            status_code=HTTPStatus.UNAUTHORIZED,
+            detail='User not authenticated',
+        )
+
+    query = select(Character)
 
     if anime:
         query = query.filter(Character.anime.contains(anime))
@@ -68,7 +79,7 @@ def list_characters(
 def delete_character(
     character_id: int,
     session: Session,
-    user: CurrentUser,
+    user: T_CurrentSuperUser,
 ):
     character = session.scalar(
         select(Character).where(
@@ -90,7 +101,7 @@ def delete_character(
 def patch_character(
     character_id: int,
     session: Session,
-    user: CurrentUser,
+    user: T_CurrentSuperUser,
     character: CharacterUpdate,
 ):
     db_character = session.scalar(
