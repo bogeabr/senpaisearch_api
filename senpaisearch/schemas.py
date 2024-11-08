@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, EmailStr
 
 
 class Message(BaseModel):
@@ -11,17 +11,16 @@ class UserSchema(BaseModel):
     username: str
     email: EmailStr
     password: str
-
-
-class UserCreateAdmin(UserSchema):
-    is_superuser: Optional[bool] = False
+    role: str = 'admin'
 
 
 class UserPublic(BaseModel):
     id: int
     username: str
     email: EmailStr
-    model_config = ConfigDict(from_attributes=True)
+
+    class Config:
+        orm_mode = True
 
 
 class UserList(BaseModel):

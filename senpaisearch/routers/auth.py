@@ -31,9 +31,11 @@ def login_for_access_token(
         raise HTTPException(
             status_code=400, detail='Incorrect email or password'
         )
-    access_token = create_access_token(data={'sub': user.email})
+    access_token = create_access_token(
+        data={'sub': user.email, 'role': user.role}
+    )
 
-    return {'access_token': access_token, 'token_type': 'Bearer'}
+    return {'access_token': access_token, 'token_type': 'bearer'}
 
 
 @router.post('/refresh_token', response_model=Token)

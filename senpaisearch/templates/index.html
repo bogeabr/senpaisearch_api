@@ -1,30 +1,9 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block title %}Home - SenpaiSearch{% endblock %}
 
 {% block content %}
-    <h1>Bem-vindo à SenpaiSearch</h1>
-
-   <!-- Formulário de Busca com Filtro -->
-    <form action="/" method="get">
-        <h3>Buscar Personagem</h3>
-        <label for="search">Buscar por:</label>
-        <select name="filter">
-            <option value="name">Nome</option>
-            <option value="anime">Anime</option>
-            <option value="age">Idade</option>
-            <option value="hierarchy">Hierarquia</option>
-        </select>
-        <input type="text" name="query" placeholder="Digite sua busca">
-        <br>
-        <button type="submit">Buscar</button>
-    </form>
-
-    {% if characters %}
-        <h3>Resultados da Busca:</h3>
-        <pre>{{ characters | tojson(indent=2) }}</pre>
-    {% else %}
-        <p>Use o campo acima para buscar personagens.</p>
-    {% endif %}
-
+    <div class="container mt-4">
+      
+    </div>   
 {% endblock %}

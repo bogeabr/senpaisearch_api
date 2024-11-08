@@ -1,7 +1,11 @@
+import os
+import time
+from collections import defaultdict
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,24 +18,36 @@ from senpaisearch.schemas import (
     CharacterUpdate,
     Message,
 )
-from senpaisearch.security import (
-    get_current_active_superuser,
-    get_current_user,
-)
+from senpaisearch.security import get_current_user
 
 router = APIRouter(prefix='/characters', tags=['characters'])
 
 Session = Annotated[Session, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
-T_CurrentSuperUser = Annotated[User, Depends(get_current_active_superuser)]
+
+# Diretório contendo os templates Jinja
+templates = Jinja2Templates(
+    directory=os.path.join(os.path.dirname(__file__), '../templates')
+)
+
+# Limite de requisições e período.
+RATE_LIMIT = 5
+RATE_PERIOD = 60  # em segundos
+request_counts = defaultdict(lambda: [0, 0])  # [contador, timestamp]
 
 
 @router.post('/', response_model=CharacterPublic)
 def create_character(
     character: CharacterCreate,
     session: Session,
-    user: T_CurrentSuperUser,
+    user: CurrentUser,
 ):
+    # Verifica se o usuário é admin
+    if user.role != 'admin':
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail='Not enough permissions'
+        )
+
     # Extraindo os campos enviados
     db_character = Character(
         name=character.name,
@@ -51,26 +67,66 @@ def create_character(
 @router.get('/', response_model=CharacterList)
 def list_characters(
     session: Session,
-    user: CurrentUser,
-    anime: str | None = None,
-    hierarchy: str | None = None,
+    request: Request,
+    get_filter: str = Query(
+        None,
+        description=(
+            'Filtro de busca.' "Use o formato 'campo:valor', ex: 'name:Naruto'"
+        ),
+    ),
     limit: int | None = None,
 ):
-    # Verifica se o usuário autenticado é válido
-    if not user:
-        raise HTTPException(
-            status_code=HTTPStatus.UNAUTHORIZED,
-            detail='User not authenticated',
-        )
+    current_user = CurrentUser
 
+    # Verificação de rate limit para usuários não autenticados
+    if not (current_user and current_user.role == 'admin'):
+        client_ip = request.client.host
+        request_count, last_request_time = request_counts[client_ip]
+        current_time = time.time()
+
+        # Reinicia o contador se o período de limitação foi excedido
+        if current_time - last_request_time > RATE_PERIOD:
+            request_counts[client_ip] = [1, current_time]
+        else:
+            # Incrementa o contador e aplica o limite
+            if request_count >= RATE_LIMIT:
+                raise HTTPException(
+                    status_code=HTTPStatus.TOO_MANY_REQUESTS,
+                    detail='Rate limit exceeded. Try again later.',
+                )
+            request_counts[client_ip][0] += 1
+
+    # Construção da consulta com filtros e limite
     query = select(Character)
+    if get_filter:
+        try:
+            field, value = get_filter.split(':', 1)
+            if field == 'name':
+                query = query.filter(Character.name.contains(value))
+            elif field == 'anime':
+                query = query.filter(Character.anime.contains(value))
+            elif field == 'age':
+                query = query.filter(Character.age == int(value))
+            elif field == 'hierarchy':
+                query = query.filter(Character.hierarchy.contains(value))
+            else:
+                raise HTTPException(
+                    status_code=HTTPStatus.BAD_REQUEST,
+                    detail='Filtro inválido.'
+                    "Use 'name', 'anime', 'age', ou 'hierarchy'.",
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST,
+                detail="O formato do filtro deve ser 'campo:valor'.",
+            )
 
-    if anime:
-        query = query.filter(Character.anime.contains(anime))
-    if hierarchy:
-        query = query.filter(Character.hierarchy.contains(hierarchy))
+    # Aplica a limitação de resultados se fornecida
+    if limit:
+        query = query.limit(limit)
 
-    characters = session.scalars(query.limit(limit)).all()
+    # Executa a consulta
+    characters = session.scalars(query).all()
 
     return {'characters': characters}
 
@@ -79,8 +135,14 @@ def list_characters(
 def delete_character(
     character_id: int,
     session: Session,
-    user: T_CurrentSuperUser,
+    user: CurrentUser,
 ):
+    # Verifica se o usuário é admin
+    if user.role != 'admin':
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail='Not enough permissions'
+        )
+
     character = session.scalar(
         select(Character).where(
             Character.user_id == user.id, Character.id == character_id
@@ -101,16 +163,24 @@ def delete_character(
 def patch_character(
     character_id: int,
     session: Session,
-    user: T_CurrentSuperUser,
+    user: CurrentUser,
     character: CharacterUpdate,
 ):
+    # Verifica se o usuário é admin
+    if user.role != 'admin':
+        raise HTTPException(
+            status_code=HTTPStatus.FORBIDDEN, detail='Not enough permissions'
+        )
+
+    # Busca o personagem pelo ID
     db_character = session.scalar(
-        select(Character).where(Character.user_id == user.id)
+        select(Character).where(Character.id == character_id)
     )
     if not db_character:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='Character not found.'
+            status_code=HTTPStatus.NOT_FOUND, detail='Character not found'
         )
+
     for key, value in character.model_dump(exclude_unset=True).items():
         setattr(db_character, key, value)
 

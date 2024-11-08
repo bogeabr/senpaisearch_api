@@ -43,8 +43,8 @@ def create_access_token(data: dict):
 
 
 def get_current_user(
-    session: Session = Depends(get_session),
     token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
 ):
     credentials_exception = HTTPException(
         status_code=HTTPStatus.UNAUTHORIZED,
@@ -55,26 +55,21 @@ def get_current_user(
         payload = decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
+
         username: str = payload.get('sub')
-        if not username:
+        role: str = payload.get('role')
+
+        if not username or role != 'admin':
             raise credentials_exception
+
     except ExpiredSignatureError:
         raise credentials_exception
+
     except DecodeError:
         raise credentials_exception
 
     user_db = session.scalar(select(User).where(User.email == username))
-    if not user_db:
+    if not user_db or user_db.role != 'admin':
         raise credentials_exception
 
     return user_db
-
-
-def get_current_active_superuser(current_user=Depends(get_current_user)):
-    if not current_user.is_superuser:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='User does not have the required superuser privileges',
-        )
-
-    return current_user
