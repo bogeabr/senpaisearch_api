@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class Message(BaseModel):
@@ -41,6 +41,9 @@ class CharacterBase(BaseModel):
     abilities: str
     notable_moments: str
 
+    class Config:
+        from_attributes = True  # Pydantic v2
+
 
 # Classe usada para criação de novos personagens
 class CharacterCreate(CharacterBase):
@@ -63,3 +66,11 @@ class CharacterUpdate(BaseModel):
     hierarchy: str | None = None
     abilities: str | None = None
     notable_moments: str | None = None
+
+
+class CharacterFilter(BaseModel):
+    name: Optional[str] = None
+    anime: Optional[str] = None
+    age: Optional[int] = None
+    age_comparison: Optional[str] = Field('=', pattern='^(>|<|=)$')
+    first_letter: Optional[str] = None

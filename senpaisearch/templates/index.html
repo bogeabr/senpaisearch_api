@@ -4,6 +4,107 @@
 
 {% block content %}
     <div class="container mt-4">
-      
-    </div>   
+        <h1>Busca de Personagens</h1>
+        <form id="search-form" onsubmit="event.preventDefault(); searchCharacter();">
+            <input type="text" id="name" placeholder="Nome">
+            <input type="text" id="anime" placeholder="Anime">
+            <input type="number" id="age" placeholder="Idade">
+            <select id="age_comparison">
+                <option value="=">Igual</option>
+                <option value=">">Maior que</option>
+                <option value="<">Menor que</option>
+            </select>
+            <input type="text" id="first_letter" placeholder="Primeira Letra">
+            <button type="submit">Buscar</button>
+        </form>
+        
+        <div id="result" class="mt-4">
+            <h4>Resultado da Busca:</h4>
+            <table class="table table-bordered d-none" id="results-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Idade</th>
+                  <th>Anime</th>
+                  <th>Hierarquia</th>
+                  <th>Habilidades</th>
+                  <th>Momentos Notáveis</th>
+                </tr>
+              </thead>
+              <tbody id="characters-table-body">
+                <!-- Os resultados da busca serão adicionados aqui -->
+              </tbody>
+            </table>
+            <p id="error-message" class="text-danger d-none"></p>
+          </div>          
+        
+   <script>
+        async function searchCharacter() {
+            const params = new URLSearchParams();
+
+            const name = document.getElementById("name").value;
+            const anime = document.getElementById("anime").value;
+            const age = document.getElementById("age").value;
+            const ageComparison = document.getElementById("age_comparison").value;
+            const firstLetter = document.getElementById("first_letter").value;
+
+            if (name) params.append("name", name);
+            if (anime) params.append("anime", anime);
+            if (age) {
+                params.append("age", age);
+                params.append("age_comparison", ageComparison);
+            }
+            if (firstLetter) params.append("first_letter", firstLetter);
+
+            const url = `/characters/search?${params.toString()}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    displayError(data.error || "Erro ao buscar personagens.");
+                    return;
+                }
+
+                displayResults(data.characters);
+            } catch (error) {
+                displayError("Erro na conexão com o servidor.");
+            }
+        }
+
+        function displayResults(characters) {
+            const tableBody = document.getElementById("characters-table-body");
+            const table = document.getElementById("results-table");
+            const errorMessage = document.getElementById("error-message");
+
+            tableBody.innerHTML = "";
+            errorMessage.classList.add("d-none");
+            table.classList.remove("d-none");
+
+            characters.forEach(character => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${character.id}</td>
+                    <td>${character.name}</td>
+                    <td>${character.age}</td>
+                    <td>${character.anime}</td>
+                    <td>${character.hierarchy}</td>
+                    <td>${character.abilities}</td>
+                    <td>${character.notable_moments}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function displayError(message) {
+            const errorMessage = document.getElementById("error-message");
+            const table = document.getElementById("results-table");
+
+            errorMessage.textContent = message;
+            errorMessage.classList.remove("d-none");
+            table.classList.add("d-none");
+        }
+    </script>
 {% endblock %}
