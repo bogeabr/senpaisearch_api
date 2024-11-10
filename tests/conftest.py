@@ -68,7 +68,7 @@ def session(engine):
 @pytest.fixture
 def user(session):
     pwd = 'testtest'
-    user = UserFactory(password=get_password_hash(pwd))
+    user = UserFactory(password=get_password_hash(pwd), role='admin')
 
     session.add(user)
     session.commit()
@@ -82,7 +82,7 @@ def user(session):
 @pytest.fixture
 def user_fun(session):
     password = 'testtest'
-    user = UserFactory(password=get_password_hash(password))
+    user = UserFactory(password=get_password_hash(password), role='user')
 
     session.add(user)
     session.commit()
@@ -98,5 +98,14 @@ def token(client, user):
     response = client.post(
         '/auth/token',
         data={'username': user.email, 'password': user.clean_password},
+    )
+    return response.json()['access_token']
+
+
+@pytest.fixture
+def token_user_fun(client, user_fun):
+    response = client.post(
+        '/auth/token',
+        data={'username': user_fun.email, 'password': user_fun.clean_password},
     )
     return response.json()['access_token']

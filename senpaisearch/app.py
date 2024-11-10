@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from senpaisearch.database import get_session
 from senpaisearch.models import Character, User
 from senpaisearch.routers import auth, characters, users
-from senpaisearch.schemas import CharacterFilter, CharacterList
+from senpaisearch.schemas import CharacterFilter
 from senpaisearch.security import get_current_user
 
 app = FastAPI()
@@ -106,9 +106,9 @@ def search_characters(
             status_code=404,
             detail='No characters found with specified criteria',
         )
-    
-   # Construindo o JSON de retorno sem redundância, 
-   # selecionando apenas os campos necessários
+
+    # Construindo o JSON de retorno sem redundância,
+    # selecionando apenas os campos necessários
     characters_data = [
         {
             'id': character.id,
@@ -117,9 +117,9 @@ def search_characters(
             'anime': character.anime,
             'hierarchy': character.hierarchy,
             'abilities': character.abilities,
-            'notable_moments': character.notable_moments
+            'notable_moments': character.notable_moments,
         }
         for character in results
     ]
 
-    return JSONResponse(content={"characters": characters_data})
+    return JSONResponse(content={'characters': characters_data})

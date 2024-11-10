@@ -140,7 +140,7 @@ def test_patch_character_error(client, token):
         headers={'Authorization': f'Bearer {token}'},
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'Character not found.'}
+    assert response.json() == {'detail': 'Character not found'}
 
 
 def test_patch_character(session, client, user, token):
