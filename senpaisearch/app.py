@@ -3,6 +3,7 @@ from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -22,6 +23,14 @@ app.include_router(characters.router)
 
 T_Session = Annotated[Session, Depends(get_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],  # Permitir requisições de qualquer origem
+    allow_methods=['*'],  # Permitir todos os métodos HTTP
+    allow_headers=['*'],  # Permitir todos os cabeçalhos
+)
+
 
 # Diretório contendo arquivos estáticos
 app.mount(

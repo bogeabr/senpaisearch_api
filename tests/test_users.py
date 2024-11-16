@@ -64,7 +64,7 @@ def test_update_user(client, user, token):
 
 
 def test_error_update_user_not_enough_permissons(
-        client, user_fun, token_user_fun
+    client, user_fun, token_user_fun
 ):
     response = client.put(
         f'/users/{user_fun.id}',
